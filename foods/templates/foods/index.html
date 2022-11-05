@@ -1,0 +1,11 @@
+{% if food_list %}
+    <ul>
+    {% for food in food_list %}
+        <li><a href="{% url 'foods:detail' food.id %}">{{ food.name }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No foods are available.</p>
+{% endif %}
+
+<!-- Todo make complete html -->
