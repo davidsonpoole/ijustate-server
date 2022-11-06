@@ -11,7 +11,7 @@ def approve_foods(modeladmin, request, queryset):
 
 class FoodAdmin(admin.ModelAdmin):
     list_display = ['name', 'cal', 'fat', 'car', 'pro', 'modified', 'approved']
-    ordering = ['approved', 'name']
+    ordering = ['approved', '-modified', 'name']
     actions = [approve_foods]
 
 

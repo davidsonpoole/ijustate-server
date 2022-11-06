@@ -24,11 +24,11 @@ class FoodsView(viewsets.ModelViewSet):
     serializer_class = FoodSerializer
 
     def get_queryset(self):
+        print(get_client_ip(self.request))
         time = self.request.query_params.get('time', None)
         if time is None:
             queryset = Food.objects.filter(approved=True).order_by('-modified')
         else:
-            print(time)
             time = parse_datetime(time)
             queryset = Food.objects.filter(approved=True, modified__gt=time).order_by('-modified')
         return queryset
@@ -81,3 +81,11 @@ def validate_inputs(name, cal, fat, car, pro, serving):
 
 def update(request):
     return JsonResponse({'changed': Food.changed})
+
+def get_client_ip(request):
+	x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+	if x_forwarded_for:
+		ip = x_forwarded_for.split(',')[0]
+	else:
+		ip = request.META.get('REMOTE_ADDR')
+	return ip

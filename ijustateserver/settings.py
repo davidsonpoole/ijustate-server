@@ -25,7 +25,7 @@ SECRET_KEY = 'REDACTED_SECRET_KEY'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['REDACTED_EXTERNAL_IP', '10.0.0.61', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['REDACTED_EXTERNAL_IP', 'REDACTED_LOCAL_IP', '127.0.0.1', 'localhost']
 
 
 # Application definition
