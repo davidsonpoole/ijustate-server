@@ -9,15 +9,6 @@ from .serializers import FoodSerializer
 from .models import Food
 
 
-class FoodForm(forms.Form):
-    name = forms.CharField(max_length=200)
-    cal = forms.FloatField(required=False)
-    fat = forms.FloatField(required=False)
-    car = forms.FloatField(required=False)
-    pro = forms.FloatField(required=False)
-    serving = forms.CharField(max_length=200, required=False)
-
-
 class FoodsView(viewsets.ModelViewSet):
     serializer_class = FoodSerializer
 
