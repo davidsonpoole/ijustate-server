@@ -9,7 +9,7 @@ router = routers.DefaultRouter()
 router.register(r'foods', views.FoodsView, 'foods')
 
 urlpatterns = [
-    path('api/update/', views.update, name='update'),
+    path('api/foods/', views.getFoods, name='getFoods'),
     path('api/', include(router.urls)),
     path('', views.FoodsHTMLView.as_view(), name='index'),
     path('pending/', views.PendingFoodsView.as_view(), name='pending'),
