@@ -1,0 +1,1 @@
+./kill_server && ./run_server

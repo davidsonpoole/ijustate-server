@@ -1,0 +1,2 @@
+pid=$(ps aux | grep ijustat | grep root | awk '{print $2}')
+sudo kill $pid
