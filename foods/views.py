@@ -1,6 +1,5 @@
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from django import forms
 from rest_framework import viewsets
 from rest_framework.renderers import JSONRenderer
 from django.http import HttpResponse
@@ -15,15 +14,19 @@ class FoodsView(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         print("Incoming request from " + get_client_ip(request))
         time = request.GET.get('time', None)
+        reset = False
         if time is None:
             foods = Food.objects.filter(approved=True).order_by('-modified')
         else:
             time = parse_datetime(time)
             foods = Food.objects.filter(approved=True, modified__gt=time).order_by('-modified')
+            if foods.count() == Food.objects.filter(approved=True).order_by('-modified').count():
+                reset = True
 
         res = {
             "foods": FoodSerializer(foods, many=True).data,
-            "timestamp": timezone.now()
+            "timestamp": timezone.now(),
+            "reset": reset
         }
         json = JSONRenderer().render(res)
         return HttpResponse(json, content_type="application/json")
