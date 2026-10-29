@@ -4,12 +4,12 @@ The shared food catalog behind the [IJustAte](https://github.com/davidsonpoole/I
 iOS app. Serves approved foods, accepts new submissions, and holds them for
 manual approval in the Django admin.
 
-Django 4.1 + DRF, SQLite, Python 3.9+.
+Django 4.1 + DRF on gunicorn, SQLite, Python 3.9+. Runs the same on macOS and
+Linux.
 
 ## Setup
 
-Settings that differ per deployment are not committed. Create your own before
-starting:
+Settings that differ per deployment are not committed. Create your own first:
 
 ```sh
 cp ijustateserver/local_settings.example.py ijustateserver/local_settings.py
@@ -29,28 +29,45 @@ pages disclose your settings, paths and hostnames to anyone who can trigger a
 Then:
 
 ```sh
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-./venv/bin/python manage.py migrate
-./venv/bin/python manage.py create_foods      # seed from food_data/*.csv
-./venv/bin/python manage.py createsuperuser   # needed to approve submissions
+make setup        # venv + dependencies
+make migrate
+make static       # collect admin static files for WhiteNoise to serve
+make seed         # load food_data/*.csv
+make superuser    # needed to approve submissions
 ```
 
-`create_foods` is keyed on food name, so re-running it refreshes the catalog
+`make seed` is keyed on food name, so re-running it refreshes the catalog
 rather than duplicating it.
 
 ## Running
 
 ```sh
-./run_server      # binds 0.0.0.0:8000, logs to EVENT.LOG
-./kill_server
-./restart_server
+make serve        # foreground, auto-reload, for development
+make start        # background, logging to EVENT.LOG
+make status
+make restart
+make stop
+make logs         # tail -f EVENT.LOG
 ```
 
-Port 8000 must match `ServerConfig.port` in the iOS client.
+`make` on its own lists every target.
 
-Note that `run_server` uses Django's development server. It is not a production
-server; a real deployment wants gunicorn behind nginx, with TLS.
+`make start` waits until the port actually accepts a connection, so it fails
+loudly rather than reporting success on a server that died during startup.
+`stop`/`restart`/`status` act on gunicorn's pidfile, not on a process-table
+search.
+
+Override the bind address and worker count per invocation:
+
+```sh
+make start PORT=9000 WORKERS=2
+```
+
+`PORT` must match `ServerConfig.port` in the iOS client (default `8000`).
+
+There is no start-on-boot or restart-on-crash here, since that is
+platform-specific — wrap `make start` in a launchd agent on macOS or a systemd
+unit on Linux if you want it supervised.
 
 ## API
 
@@ -80,7 +97,10 @@ exist; there are deliberately no detail routes to retrieve, update or delete.
 ## Tests
 
 ```sh
-./venv/bin/python manage.py test foods
+make test
+make check-deploy
 ```
 
-Covers the response contract, the `reset` conditions, and the write surface.
+`make test` covers the response contract, the `reset` conditions, and the write
+surface. `make check-deploy` runs Django's deployment checklist; its four
+remaining warnings are all about TLS, which this server does not yet have.

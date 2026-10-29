@@ -89,3 +89,7 @@ local_settings.py
 .env
 db.sqlite3
 *.LOG
+
+# gunicorn pidfile and collected static files
+*.pid
+staticfiles/
