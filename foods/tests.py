@@ -23,7 +23,7 @@ class CatalogContractTests(TestCase):
                             approved=False)
 
     def get(self, **params):
-        res = self.client.get(URL, params)
+        res = self.client.get(URL, params, secure=True)
         self.assertEqual(res.status_code, 200)
         return res.json()
 
@@ -89,26 +89,26 @@ class WriteSurfaceTests(TestCase):
     def test_submission_is_accepted_but_unapproved(self):
         res = self.client.post(URL, {"name": "Submitted", "cal": 5, "fat": 1,
                                      "car": 1, "pro": 1},
-                               content_type="application/json")
+                               content_type="application/json", secure=True)
         self.assertEqual(res.status_code, 201)
         self.assertFalse(Food.objects.get(name="Submitted").approved)
 
     def test_client_supplied_id_is_ignored(self):
         res = self.client.post(URL, {"id": 10000, "name": "Ignored", "cal": 1,
                                      "fat": 1, "car": 1, "pro": 1},
-                               content_type="application/json")
+                               content_type="application/json", secure=True)
         self.assertNotEqual(res.json()["id"], 10000)
 
     def test_blank_name_rejected(self):
         res = self.client.post(URL, {"name": "   ", "cal": 1, "fat": 1,
                                      "car": 1, "pro": 1},
-                               content_type="application/json")
+                               content_type="application/json", secure=True)
         self.assertEqual(res.status_code, 400)
 
     def test_negative_macros_rejected(self):
         res = self.client.post(URL, {"name": "Negative", "cal": -5, "fat": 1,
                                      "car": 1, "pro": 1},
-                               content_type="application/json")
+                               content_type="application/json", secure=True)
         self.assertEqual(res.status_code, 400)
 
     def test_detail_routes_do_not_exist(self):
@@ -116,7 +116,7 @@ class WriteSurfaceTests(TestCase):
         `queryset` was undefined. They must not be reachable at all."""
         detail = f"{URL}{self.food.pk}/"
         for method in ("get", "put", "patch", "delete"):
-            res = getattr(self.client, method)(detail)
+            res = getattr(self.client, method)(detail, secure=True)
             self.assertIn(res.status_code, (404, 405), f"{method} -> {res.status_code}")
         self.food.refresh_from_db()
         self.assertEqual(self.food.name, "Target")

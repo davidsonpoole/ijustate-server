@@ -17,7 +17,10 @@ SECRET_KEY = "replace-me-with-a-generated-key"
 # can trigger a 500.
 DEBUG = False
 
-# The hostnames/IPs this server answers on.
+# The hostnames/IPs this server answers on. When reached through
+# `tailscale serve`, add this node's MagicDNS name, which you can find with
+# `tailscale status --json | grep DNSName`:
+#     "my-machine.tailnet-name.ts.net",
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",

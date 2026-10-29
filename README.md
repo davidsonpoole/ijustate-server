@@ -5,7 +5,8 @@ iOS app. Serves approved foods, accepts new submissions, and holds them for
 manual approval in the Django admin.
 
 Django 4.1 + DRF on gunicorn, SQLite, Python 3.9+. Runs the same on macOS and
-Linux.
+Linux. Reached over Tailscale, which terminates TLS, so the server needs no
+open ports.
 
 ## Setup
 
@@ -44,9 +45,11 @@ rather than duplicating it.
 ```sh
 make serve        # foreground, auto-reload, for development
 make start        # background, logging to EVENT.LOG
-make status
+make expose       # publish to the tailnet over HTTPS
+make status       # gunicorn + tailnet state
 make restart
 make stop
+make unexpose
 make logs         # tail -f EVENT.LOG
 ```
 
@@ -63,11 +66,42 @@ Override the bind address and worker count per invocation:
 make start PORT=9000 WORKERS=2
 ```
 
-`PORT` must match `ServerConfig.port` in the iOS client (default `8000`).
+`PORT` is only the local port gunicorn binds and that `tailscale serve`
+proxies to; the client reaches the server on 443 via its MagicDNS name and
+does not need to know it.
 
 There is no start-on-boot or restart-on-crash here, since that is
 platform-specific — wrap `make start` in a launchd agent on macOS or a systemd
 unit on Linux if you want it supervised.
+
+## TLS over Tailscale
+
+gunicorn binds `127.0.0.1` only. `tailscale serve` publishes it to the tailnet
+on 443 with a Tailscale-managed Let's Encrypt certificate for this node's
+MagicDNS name, and proxies to gunicorn over the loopback.
+
+One-time setup: enable **HTTPS Certificates** on the DNS page of the Tailscale
+admin console, then add this node's MagicDNS name to `ALLOWED_HOSTS` in
+`local_settings.py`. Find it with:
+
+```sh
+tailscale status --json | grep DNSName
+```
+
+Then `make expose`. The first HTTPS request provisions the certificate and can
+take ~30s; after that it is cached and renewed automatically.
+
+Django trusts `X-Forwarded-Proto` from the proxy (`SECURE_PROXY_SSL_HEADER`),
+which is only safe because gunicorn is not reachable off-box. With TLS in front,
+`SECURE_SSL_REDIRECT`, secure cookies and HSTS are enabled whenever
+`DEBUG = False`, so `DEBUG = True` is what you want locally for `make serve`.
+
+Note that Tailscale encrypts all tailnet traffic by itself, so HTTPS here is not
+what protects the data — it is what keeps iOS App Transport Security satisfied
+without Info.plist exceptions, and what lets the client use a stable hostname.
+
+`tailscale funnel` would expose this to the public internet. That is not wanted
+here; `serve` keeps it inside the tailnet.
 
 ## API
 
@@ -102,5 +136,6 @@ make check-deploy
 ```
 
 `make test` covers the response contract, the `reset` conditions, and the write
-surface. `make check-deploy` runs Django's deployment checklist; its four
-remaining warnings are all about TLS, which this server does not yet have.
+surface. `make check-deploy` runs Django's deployment checklist and should come
+back clean; the one silenced check is HSTS preloading, which is not appropriate
+for a host under Tailscale's shared `ts.net` domain.

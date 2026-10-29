@@ -161,3 +161,30 @@ except ImportError as exc:
 
 if not SECRET_KEY:
     raise ImproperlyConfigured("SECRET_KEY is not set in local_settings.py")
+
+
+# `tailscale serve` terminates TLS and proxies to gunicorn over plain HTTP on
+# the loopback, so Django must be told the original request was HTTPS. This is
+# only safe because gunicorn binds 127.0.0.1: nothing off-box can reach it to
+# forge the header.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Admin POSTs need the HTTPS origin trusted. Derived from ALLOWED_HOSTS so
+# there is only one place to add a hostname.
+CSRF_TRUSTED_ORIGINS = list(globals().get('CSRF_TRUSTED_ORIGINS', [])) + [
+    f'https://{host}' for host in ALLOWED_HOSTS
+    if host not in ('127.0.0.1', 'localhost', '*') and not host.startswith('.')
+]
+
+if not DEBUG:
+    # Safe now that TLS actually terminates in front of us.
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 86400
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Not preloaded: this host sits under Tailscale's shared ts.net domain, and
+    # the browser preload list is not an appropriate place for it. check
+    # --deploy's W021 is advice for public sites, so it is silenced below.
+    SECURE_HSTS_PRELOAD = False
+    SILENCED_SYSTEM_CHECKS = ['security.W021']

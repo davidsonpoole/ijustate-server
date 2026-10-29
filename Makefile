@@ -11,22 +11,25 @@ PIP      := ./venv/bin/pip
 GUNICORN := ./venv/bin/gunicorn
 APP      := ijustateserver.wsgi:application
 
-HOST     ?= 0.0.0.0
+# Loopback only: `tailscale serve` is what exposes this to the tailnet.
+HOST     ?= 127.0.0.1
 PORT     ?= 8000
 WORKERS  ?= 3
 
 PIDFILE  := gunicorn.pid
+TAILSCALE ?= $(shell command -v tailscale 2>/dev/null \
+		|| echo /Applications/Tailscale.app/Contents/MacOS/tailscale)
 LOG      := EVENT.LOG
 
 .DEFAULT_GOAL := help
-.PHONY: help setup migrate static seed superuser serve start stop restart status logs test check-deploy clean
+.PHONY: help setup migrate static seed superuser serve start stop restart status logs expose unexpose test check-deploy clean
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk -F':.*?## ' '{printf "  \033[1m%-13s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "  Bind address: HOST=$(HOST) PORT=$(PORT) WORKERS=$(WORKERS) (override on the command line)."
-	@echo "  PORT must match ServerConfig.port in the iOS client."
+	@echo "  PORT is the local port tailscale serve proxies to; the client uses 443."
 
 setup: ## Create the venv and install dependencies
 	python3 -m venv venv
@@ -92,13 +95,21 @@ restart: ## Restart the background server
 
 status: ## Report whether the server is running
 	@if [ -f $(PIDFILE) ] && kill -0 `cat $(PIDFILE)` 2>/dev/null; then \
-		echo "running (pid `cat $(PIDFILE)`) on $(HOST):$(PORT)"; \
+		echo "gunicorn: running (pid `cat $(PIDFILE)`) on $(HOST):$(PORT)"; \
 	else \
-		echo "not running"; \
+		echo "gunicorn: not running"; \
 	fi
+	@out=`$(TAILSCALE) serve status 2>/dev/null | grep -E '^https://' | head -1`; \
+	if [ -n "$$out" ]; then echo "tailnet : $$out"; else echo "tailnet : not exposed"; fi
 
 logs: ## Follow EVENT.LOG
 	tail -f $(LOG)
+
+expose: ## Publish to the tailnet over HTTPS (tailscale serve)
+	$(TAILSCALE) serve --bg $(PORT)
+
+unexpose: ## Stop publishing to the tailnet
+	$(TAILSCALE) serve --https=443 off
 
 test: ## Run the test suite
 	$(PY) manage.py test foods
