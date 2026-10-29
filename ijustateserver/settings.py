@@ -12,20 +12,18 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'REDACTED_SECRET_KEY'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['REDACTED_EXTERNAL_IP', 'REDACTED_LOCAL_IP', '127.0.0.1', 'localhost']
+# SECRET_KEY, DEBUG and ALLOWED_HOSTS are deployment-specific and live in
+# local_settings.py, which is untracked. See local_settings.example.py.
+# Safe defaults here; local_settings.py is imported at the end of this file.
+SECRET_KEY = None
+DEBUG = False
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -126,4 +124,33 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True
+# The iOS client is not a browser and does not need CORS. Left configurable so
+# a web client can be allowlisted explicitly rather than opening all origins.
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = []
+
+# DRF defaults to AllowAny; the catalog is world-readable by design, but say so
+# explicitly rather than inheriting it.
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+}
+
+
+# Deployment-specific overrides. Required: the server must not fall back to a
+# default SECRET_KEY or an open ALLOWED_HOSTS.
+try:
+    from .local_settings import *  # noqa: F401,F403
+except ImportError as exc:
+    raise ImproperlyConfigured(
+        "ijustateserver/local_settings.py is missing. Copy "
+        "local_settings.example.py to local_settings.py and set SECRET_KEY "
+        "and ALLOWED_HOSTS."
+    ) from exc
+
+if not SECRET_KEY:
+    raise ImproperlyConfigured("SECRET_KEY is not set in local_settings.py")

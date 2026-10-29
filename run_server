@@ -1,1 +1,6 @@
-sudo ./venv/bin/python manage.py runserver 0.0.0.0:80 >EVENT.LOG 2>&1 & disown
+#!/bin/sh
+# Bind 8000 to match the iOS client (IJustAteProps/ServerConfig.port).
+# No sudo: 8000 is unprivileged, so the server no longer runs as root.
+# --insecure serves the admin's static files with DEBUG=False, which the dev
+# server otherwise refuses to do.
+./venv/bin/python manage.py runserver --insecure 0.0.0.0:8000 >EVENT.LOG 2>&1 & disown

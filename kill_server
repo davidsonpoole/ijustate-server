@@ -1,2 +1,10 @@
-pid=$(ps aux | grep ijustat | grep root | awk '{print $2}')
-sudo kill $pid
+#!/bin/sh
+# Matches on the runserver command rather than on root-owned processes, since
+# the server is no longer started with sudo.
+pids=$(pgrep -f "manage.py runserver" || true)
+if [ -z "$pids" ]; then
+  echo "no runserver process found"
+  exit 0
+fi
+echo "killing: $pids"
+kill $pids
